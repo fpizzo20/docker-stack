@@ -1,0 +1,38 @@
+---
+
+- name: Ensures stack dir exists
+  file:
+    path: /home/{{ docker_user }}/stacks/{{ stack_name }}
+    state: directory
+    owner: "{{ docker_user }}"
+    group: "{{ docker_user }}"
+    mode: '0755'
+
+- name: Copy docker-compose.yml {{ stack_name }}
+  template:
+    src: "{{ stack_docker_compose }}"
+    dest: "/home/{{ docker_user }}/stacks/{{ stack_name }}/docker-compose.yml"
+    owner: "{{ docker_user }}"
+    group: "{{ docker_user }}"
+    mode: '0644'
+
+- name: Run stack {{ stack_name }}
+  become_user: "{{ docker_user }}"
+  docker_compose:
+    project_src: "/home/{{ docker_user }}/stacks/{{ stack_name }}"
+    build: no
+    pull: yes
+    remove_orphans: yes
+    scale: "{{ stack_scale }}"
+
+- name: Prune images (including non-dangling images) {{ stack_name }}
+  when: prune_images
+  become_user: "{{ docker_user }}"
+  docker_prune:
+    containers: no
+    images: yes
+    images_filters:
+      dangling: false
+    networks: no
+    volumes: no
+    builder_cache: no
